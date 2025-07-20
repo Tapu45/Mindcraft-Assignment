@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Visitor Analytics Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #1f2937;
+    }
+
+    header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(10px);
+      color: white;
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-size: 0.9rem;
+    }
+
+    .status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status.connected {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+    }
+
+    .status.connected::before {
+      background: #10b981;
+    }
+
+    .status.reconnecting {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+    }
+
+    .status.reconnecting::before {
+      background: #f59e0b;
+    }
+
+    .status.disconnected {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .status.disconnected::before {
+      background: #ef4444;
+    }
+
+    .container {
+      display: flex;
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      flex: 1;
+    }
+
+    .panel.main {
+      flex: 2;
+    }
+
+    .panel h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .panel h2::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      border-radius: 2px;
+    }
+
+    .notification {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      display: none;
+      font-weight: 500;
+    }
+
+    .filters {
+      background: rgba(248, 250, 252, 0.8);
+      padding: 1.5rem;
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 2rem;
+      align-items: end;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filters label {
+      font-weight: 600;
+      color: #374151;
+      font-size: 0.9rem;
+    }
+
+    .filters input {
+      padding: 0.75rem 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      background: white;
+      width: 200px;
+      transition: border-color 0.2s;
+    }
+
+    .filters input:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    button {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-right: 0.75rem;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    button.secondary {
+      background: linear-gradient(135deg, #6b7280, #4b5563);
+    }
+
+    button.secondary:hover {
+      box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+    }
+
+    .feed, .sessions {
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+
+    .feed::-webkit-scrollbar, .sessions::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .feed::-webkit-scrollbar-track, .sessions::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 3px;
+    }
+
+    .feed::-webkit-scrollbar-thumb, .sessions::-webkit-scrollbar-thumb {
+      background: #6366f1;
+      border-radius: 3px;
+    }
+
+    .feed > div, .sessions > div {
+      background: rgba(248, 250, 252, 0.8);
+      margin-bottom: 0.75rem;
+      padding: 1rem;
+      border-radius: 12px;
+      border-left: 4px solid #6366f1;
+      transition: all 0.2s;
+    }
+
+    .feed > div:hover, .sessions > div:hover {
+      transform: translateX(2px);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .session-journey {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .mini-chart {
+      width: 100%;
+      height: 200px;
+      border-radius: 12px;
+      background: rgba(248, 250, 252, 0.5);
+    }
+
+    .stats-section {
+      margin-bottom: 2rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+      padding: 1.5rem;
+      border-radius: 16px;
+      text-align: center;
+      border: 1px solid rgba(99, 102, 241, 0.1);
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: #6b7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #6366f1;
+      line-height: 1;
+    }
+
+    .sessions > div {
+      cursor: pointer;
+    }
+
+    #session-journey {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(248, 250, 252, 0.8);
+      border-radius: 12px;
+      border-left: 4px solid #8b5cf6;
+      display: none;
+    }
+
+    #session-journey.show {
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        padding: 1rem;
+      }
+      
+      .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+      }
+      
+      .filters input {
+        width: 100%;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .header-right {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-end;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Visitor Analytics Dashboard</h1>
+    <div class="header-right">
+      <span id="ws-status" class="status disconnected">Disconnected</span>
+      <span id="dashboards-count"></span>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="panel main">
+      <div class="notification" id="notification"></div>
+      
+      <div class="filters">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="filter-country">Country Filter</label>
+            <input type="text" id="filter-country" placeholder="e.g. India">
+          </div>
+          <div class="filter-group">
+            <label for="filter-page">Page Filter</label>
+            <input type="text" id="filter-page" placeholder="e.g. /products">
+          </div>
+          <div class="filter-group">
+            <button onclick="applyFilters()">Apply Filters</button>
+            <button class="secondary" onclick="resetStats()">Reset Stats</button>
+          </div>
+        </div>
+      </div>
+
+      <h2>Live Visitor Feed</h2>
+      <div class="feed" id="visitor-feed"></div>
+
+      <h2>Mini Chart (Last 10 min)</h2>
+      <canvas id="miniChart" class="mini-chart"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="stats-section">
+        <h2>Stats</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Active Visitors</div>
+            <div class="stat-value" id="active-visitors">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Today</div>
+            <div class="stat-value" id="total-today">0</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Active Sessions</h2>
+      <div class="sessions" id="sessions-list"></div>
+      <div id="session-journey"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="socket-client.js"></script>
+</body>
+</html>
